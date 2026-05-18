@@ -118,28 +118,28 @@ body{font-family:var(--font-b);color:#fff;background:#0a0a0f;overflow-x:hidden;-
 @media(max-width:768px){
   .desktop-nav{display:none}.burger{display:block}
   .page{padding:76px 16px 20px}
-  .section-title{font-size:clamp(28px,8vw,40px)}
-  .section-sub{font-size:clamp(14px,4vw,18px)}
-  .hero-motto{font-size:clamp(16px,5vw,22px)}
-  .hero-greeting{font-size:clamp(15px,4.5vw,20px)}
-  .name-line{font-size:clamp(42px,14vw,80px)}
-  .poem-card{min-width:260px;max-width:280px;padding:12px}
-  .poem-text{font-size:clamp(14px,4vw,16px);line-height:1.4}
-  .poem-author{font-size:13px}
-  .about-lead{font-size:clamp(16px,4.5vw,22px)}
-  .about-block p{font-size:15px}
-  .np-title{font-size:20px}
-  .np-artist{font-size:14px}
-  .t-name{font-size:15px}
-  .t-num{font-size:13px}
-  .time-row{font-size:13px}
-  .btn{font-size:15px;padding:12px 28px}
-  .video-thumb{width:140px}
-  .vt-title{font-size:13px}
-  .mobile-nav .nav-link{font-size:18px}
-  .hero-flower{font-size:24px;margin-bottom:4px}
-  .footer-info p{font-size:14px}
-  .footer-sub{font-size:12px!important}
+  .section-title{font-size:clamp(34px,9.5vw,48px)}
+  .section-sub{font-size:clamp(17px,5vw,22px)}
+  .hero-motto{font-size:clamp(19px,6vw,26px)}
+  .hero-greeting{font-size:clamp(18px,5.5vw,24px)}
+  .name-line{font-size:clamp(50px,17vw,96px)}
+  .poem-card{min-width:280px;max-width:310px;padding:14px}
+  .poem-text{font-size:clamp(17px,5vw,19px);line-height:1.4}
+  .poem-author{font-size:16px}
+  .about-lead{font-size:clamp(19px,5.5vw,26px)}
+  .about-block p{font-size:18px}
+  .np-title{font-size:24px}
+  .np-artist{font-size:17px}
+  .t-name{font-size:18px}
+  .t-num{font-size:16px}
+  .time-row{font-size:16px}
+  .btn{font-size:18px;padding:14px 34px}
+  .video-thumb{width:168px}
+  .vt-title{font-size:16px}
+  .mobile-nav .nav-link{font-size:22px}
+  .hero-flower{font-size:29px;margin-bottom:4px}
+  .footer-info p{font-size:17px}
+  .footer-sub{font-size:14px!important}
   .hero-divider{margin-bottom:10px}
-  .card{padding:14px}
+  .card{padding:16px}
 }
