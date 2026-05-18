@@ -1,5 +1,5 @@
 'use strict';
-const TOTAL_FRAMES = 672;
+const TOTAL_FRAMES = 480;
 const PAGE_COUNT = 5;
 const LERP = 0.08;
 const CONCURRENCY = 48;
