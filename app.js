@@ -1,7 +1,7 @@
 'use strict';
 const TOTAL_FRAMES = 480;
 const PAGE_COUNT = 5;
-const LERP = 0.08;
+const LERP = 0.12;
 const CONCURRENCY = 48;
 
 let scrollPos = 0, targetScroll = 0, currentFrame = 0;
@@ -42,13 +42,22 @@ function drawFrame(){
 }
 
 const MAX_SCROLL=(PAGE_COUNT-1)*1000;
+let snapTimer=null;
+function scheduleSnap(){
+  clearTimeout(snapTimer);
+  snapTimer=setTimeout(()=>{
+    const nearest=Math.round(targetScroll/1000)*1000;
+    targetScroll=Math.max(0,Math.min(nearest,MAX_SCROLL));
+  },300);
+}
 window.addEventListener('wheel',e=>{
-  /* allow horizontal poem/video scroll */
   const slider=document.getElementById('poemsSlider');
   const gallery=document.getElementById('videoGallery');
   if(slider&&slider.matches(':hover'))return;
   if(gallery&&gallery.matches(':hover'))return;
-  e.preventDefault();targetScroll=Math.max(0,Math.min(targetScroll+e.deltaY*1.2,MAX_SCROLL));
+  e.preventDefault();
+  targetScroll=Math.max(0,Math.min(targetScroll+e.deltaY*1.5,MAX_SCROLL));
+  scheduleSnap();
 },{passive:false});
 
 let touchY=0,touchStartX=0,isHSwipe=false;
@@ -60,6 +69,7 @@ window.addEventListener('touchmove',e=>{
   const delta=touchY-e.touches[0].clientY;touchY=e.touches[0].clientY;
   targetScroll=Math.max(0,Math.min(targetScroll+delta*3,MAX_SCROLL));
 },{passive:true});
+window.addEventListener('touchend',()=>{scheduleSnap()},{passive:true});
 
 function animate(){
   scrollPos+=(targetScroll-scrollPos)*LERP;
@@ -106,7 +116,6 @@ audio.addEventListener('ended',()=>{loadTrack((curTrack+1)%tracks.length);audio.
 progressWrap.addEventListener('click',e=>{if(audio.duration){audio.currentTime=(e.offsetX/progressWrap.offsetWidth)*audio.duration}});
 trackEls.forEach(t=>t.addEventListener('click',()=>{loadTrack(parseInt(t.dataset.idx));audio.play();playBtn.textContent='⏸'}));
 
-/* ============ VIDEO GALLERY ============ */
 const videoData=[
   {src:'https://www.dropbox.com/scl/fi/dx6ica0q180pyle2f4a2a/WhatsApp-Video-2026-05-06-at-18.09.41.mp4?rlkey=hx7m3c2kzrwxgs0uu05tk11jt&raw=1',title:'Стихотворение 1'},
   {src:'https://www.dropbox.com/scl/fi/ep4mdx9arpc9sl4d56xhp/WhatsApp-Video-2026-05-06-at-18.09.44.mp4?rlkey=79j7r9sngqmydzi963mquibnu&raw=1',title:'Стихотворение 2'},
@@ -126,7 +135,6 @@ const videoData=[
   {src:'https://www.dropbox.com/scl/fi/zr9zqk2dct9kuv9qeaic5/WhatsApp-Video-2026-05-06-at-18.11.07.mp4?rlkey=8pylqk4uzmiz2sfcw90y6ft2y&raw=1',title:'Стихотворение 16'},
   {src:'https://www.dropbox.com/scl/fi/4mxet9hsax496193ov3s5/WhatsApp-Video-2026-05-06-at-18.10.06.mp4?rlkey=l5qaxtwmuixl0t8wjiqz650xv&raw=1',title:'Стихотворение 17'}
 ];
-const thumbImg='https://www.dropbox.com/scl/fi/tjhntz3lnl579nazzbkoa/WhatsApp-Image-2026-05-06-at-18.09.37.jpeg?rlkey=hg1695s1o8x54es9h8bv5x9u4&raw=1';
 const gallery=document.getElementById('videoGallery');
 
 /* build modal */
@@ -138,7 +146,13 @@ modal.addEventListener('click',e=>{if(e.target===modal){modal.classList.remove('
 
 videoData.forEach((v,i)=>{
   const thumb=document.createElement('div');thumb.className='video-thumb';
-  thumb.innerHTML=`<img src="${thumbImg}" alt="${v.title}" loading="lazy"><div class="vt-play">▷</div><div class="vt-title">${v.title}</div>`;
+  /* use actual video element as preview so each shows its own first frame */
+  const vid=document.createElement('video');
+  vid.src=v.src;vid.preload='metadata';vid.muted=true;vid.playsInline=true;
+  vid.addEventListener('loadeddata',()=>{vid.currentTime=0.5});
+  thumb.appendChild(vid);
+  const overlay=document.createElement('div');overlay.className='vt-play';overlay.textContent='▷';thumb.appendChild(overlay);
+  const title=document.createElement('div');title.className='vt-title';title.textContent=v.title;thumb.appendChild(title);
   thumb.addEventListener('click',()=>{vmVideo.src=v.src;modal.classList.add('open');vmVideo.play()});
   gallery.appendChild(thumb);
 });

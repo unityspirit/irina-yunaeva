@@ -36,14 +36,14 @@ body{font-family:var(--font-b);color:#fff;background:#0a0a0f;overflow:hidden;hei
 .mobile-nav .nav-link{font-size:16px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 .mobile-nav.open{display:flex}
 .scroll-container{position:fixed;inset:0;z-index:1;overflow:hidden}
-.page{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:90px 20px 30px;opacity:0;visibility:hidden;transition:opacity .4s,visibility .4s}
+.page{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:90px 20px 30px;opacity:0;visibility:hidden;transition:opacity .6s ease,visibility .6s ease}
 .page.active{opacity:1;visibility:visible}
 .page-inner{width:100%;max-width:1000px;max-height:calc(100dvh - 120px);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(183,148,214,.3) transparent;padding-right:6px}
 .page-inner::-webkit-scrollbar{width:3px}
 .page-inner::-webkit-scrollbar-thumb{background:rgba(183,148,214,.3);border-radius:2px}
 .section-title{font-family:var(--font-h);font-size:clamp(32px,6vw,56px);text-align:center;color:#fff;margin-bottom:8px;text-shadow:var(--ts);font-weight:500;font-style:italic}
 .section-sub{text-align:center;color:#fff;font-size:clamp(14px,2vw,18px);margin-bottom:22px;text-shadow:var(--ts);font-style:italic;font-family:var(--font-h)}
-.card{background:var(--card-bg);border:2px solid var(--card-border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow-l);transition:transform .3s,box-shadow .3s}
+.card{background:var(--card-bg);border:2px solid var(--card-border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-l);transition:transform .3s,box-shadow .3s}
 .card:hover{transform:translateY(-3px);box-shadow:0 6px 24px rgba(183,148,214,.12)}
 /* HERO */
 .hero-content{text-align:center}
@@ -64,9 +64,9 @@ body{font-family:var(--font-b);color:#fff;background:#0a0a0f;overflow:hidden;hei
 .poems-slider{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:4px 0 16px;scrollbar-width:thin;scrollbar-color:rgba(183,148,214,.3) transparent}
 .poems-slider::-webkit-scrollbar{height:4px}
 .poems-slider::-webkit-scrollbar-thumb{background:rgba(183,148,214,.3);border-radius:2px}
-.poem-card{min-width:300px;max-width:340px;flex-shrink:0;scroll-snap-align:start;border-color:rgba(183,148,214,0.25);display:flex;flex-direction:column;justify-content:space-between}
-.poem-text{font-family:var(--font-h);font-size:clamp(15px,1.8vw,18px);color:#fff;line-height:1.8;font-style:italic;text-shadow:var(--ts)}
-.poem-author{display:block;margin-top:12px;font-size:13px;color:var(--lilac);font-style:italic;text-align:right;text-shadow:var(--ts);font-family:var(--font-h)}
+.poem-card{min-width:280px;max-width:320px;flex-shrink:0;scroll-snap-align:start;border-color:rgba(183,148,214,0.25);display:flex;flex-direction:column;justify-content:space-between;padding:14px}
+.poem-text{font-family:var(--font-h);font-size:clamp(14px,1.6vw,17px);color:#fff;line-height:1.45;font-style:italic;text-shadow:var(--ts)}
+.poem-author{display:block;margin-top:8px;font-size:13px;color:var(--lilac);font-style:italic;text-align:right;text-shadow:var(--ts);font-family:var(--font-h)}
 /* MUSIC */
 .music-player{max-width:480px;margin:0 auto;border-color:rgba(183,148,214,.35)}
 .now-playing{display:flex;align-items:center;gap:14px;margin-bottom:14px}
@@ -116,6 +116,18 @@ body{font-family:var(--font-b);color:#fff;background:#0a0a0f;overflow:hidden;hei
   .desktop-nav{display:none}.burger{display:block}
   .page{padding:80px 14px 20px}
   .page-inner{max-height:calc(100dvh - 100px)}
-  .poem-card{min-width:260px;max-width:280px}
+  .section-title{font-size:clamp(28px,8vw,44px)}
+  .section-sub{font-size:clamp(14px,4vw,18px)}
+  .hero-motto{font-size:clamp(16px,5vw,22px)}
+  .hero-greeting{font-size:clamp(15px,4vw,20px)}
+  .name-line{font-size:clamp(42px,14vw,80px)}
+  .poem-card{min-width:260px;max-width:280px;padding:12px}
+  .poem-text{font-size:clamp(14px,3.8vw,16px);line-height:1.4}
+  .about-lead{font-size:clamp(16px,4.5vw,22px)}
+  .about-block p{font-size:15px}
+  .np-title{font-size:20px}
+  .t-name{font-size:15px}
+  .btn{font-size:15px;padding:12px 28px}
   .video-thumb{width:150px}
+  .mobile-nav .nav-link{font-size:18px}
 }
