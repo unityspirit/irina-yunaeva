@@ -60,16 +60,19 @@ window.addEventListener('wheel',e=>{
   scheduleSnap();
 },{passive:false});
 
-let touchY=0,touchStartX=0,isHSwipe=false;
-window.addEventListener('touchstart',e=>{touchY=e.touches[0].clientY;touchStartX=e.touches[0].clientX;isHSwipe=false},{passive:true});
-window.addEventListener('touchmove',e=>{
-  const dx=Math.abs(e.touches[0].clientX-touchStartX),dy=Math.abs(e.touches[0].clientY-touchY);
-  if(!isHSwipe&&dx>dy&&dx>10){isHSwipe=true;return}
-  if(isHSwipe)return;
-  const delta=touchY-e.touches[0].clientY;touchY=e.touches[0].clientY;
-  targetScroll=Math.max(0,Math.min(targetScroll+delta*3,MAX_SCROLL));
+let touchStartY=0,touchStartX=0,touchHandled=false;
+window.addEventListener('touchstart',e=>{touchStartY=e.touches[0].clientY;touchStartX=e.touches[0].clientX;touchHandled=false},{passive:true});
+window.addEventListener('touchend',e=>{
+  if(touchHandled)return;
+  const dy=touchStartY-(e.changedTouches[0]||e.touches[0]||{clientY:touchStartY}).clientY;
+  const dx=Math.abs((e.changedTouches[0]||{clientX:touchStartX}).clientX-touchStartX);
+  if(dx>Math.abs(dy))return; /* horizontal swipe — let slider handle */
+  if(Math.abs(dy)<30)return; /* too small — ignore */
+  touchHandled=true;
+  const curPage=Math.round(targetScroll/1000);
+  if(dy>0&&curPage<PAGE_COUNT-1)targetScroll=(curPage+1)*1000;
+  else if(dy<0&&curPage>0)targetScroll=(curPage-1)*1000;
 },{passive:true});
-window.addEventListener('touchend',()=>{scheduleSnap()},{passive:true});
 
 function animate(){
   scrollPos+=(targetScroll-scrollPos)*LERP;
