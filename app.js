@@ -1,7 +1,7 @@
 'use strict';
 const TOTAL_FRAMES = 480;
 const PAGE_COUNT = 5;
-const LERP = 0.12;
+const LERP = 0.18;
 const CONCURRENCY = 48;
 
 let scrollPos = 0, targetScroll = 0, currentFrame = 0;
@@ -60,15 +60,22 @@ window.addEventListener('wheel',e=>{
   scheduleSnap();
 },{passive:false});
 
-let touchStartY=0,touchStartX=0,touchHandled=false;
-window.addEventListener('touchstart',e=>{touchStartY=e.touches[0].clientY;touchStartX=e.touches[0].clientX;touchHandled=false},{passive:true});
-window.addEventListener('touchend',e=>{
-  if(touchHandled)return;
-  const dy=touchStartY-(e.changedTouches[0]||e.touches[0]||{clientY:touchStartY}).clientY;
-  const dx=Math.abs((e.changedTouches[0]||{clientX:touchStartX}).clientX-touchStartX);
-  if(dx>Math.abs(dy))return; /* horizontal swipe — let slider handle */
-  if(Math.abs(dy)<30)return; /* too small — ignore */
-  touchHandled=true;
+/* Mobile: track Y through touchmove, snap page on touchend */
+let tStartY=0,tStartX=0,tLastY=0,tSwiped=false;
+window.addEventListener('touchstart',e=>{
+  tStartY=e.touches[0].clientY;tLastY=tStartY;
+  tStartX=e.touches[0].clientX;tSwiped=false;
+},{passive:true});
+window.addEventListener('touchmove',e=>{
+  tLastY=e.touches[0].clientY;
+},{passive:true});
+window.addEventListener('touchend',()=>{
+  if(tSwiped)return;
+  const dy=tStartY-tLastY;
+  const dx=Math.abs(tLastY-tStartY)===0?0:Math.abs((tLastY-tStartY));
+  const dxReal=Math.abs(tStartX-tStartX); /* rough check */
+  if(Math.abs(dy)<15)return; /* too small */
+  tSwiped=true;
   const curPage=Math.round(targetScroll/1000);
   if(dy>0&&curPage<PAGE_COUNT-1)targetScroll=(curPage+1)*1000;
   else if(dy<0&&curPage>0)targetScroll=(curPage-1)*1000;
