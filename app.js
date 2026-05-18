@@ -1,108 +1,151 @@
+/* ─── Ирина Юнаева — ScrollCanvas Engine (Native Scroll-Snap) ─── */
 'use strict';
+
 const TOTAL_FRAMES = 480;
-const PAGE_COUNT = 5;
-const LERP = 0.18;
+const LERP = 0.08;
 const CONCURRENCY = 48;
 
-let scrollPos = 0, targetScroll = 0, currentFrame = 0;
-let images = new Array(TOTAL_FRAMES), loadedCount = 0, failCount = 0;
-const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent) || window.innerWidth < 768;
+const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent) || innerWidth < 768;
+const FRAME_DIR = isMobile ? 'frames-mobile' : 'frames-webp';
 
-const canvas = document.getElementById('scrollCanvas');
-const ctx = canvas.getContext('2d');
+/* ── DOM refs ── */
 const loader = document.getElementById('loader');
 const loaderFill = document.getElementById('loaderFill');
 const loaderPct = document.getElementById('loaderPct');
-const pages = document.querySelectorAll('.page');
-const navLinks = document.querySelectorAll('.nav-link');
+const pages = Array.from(document.querySelectorAll('.page'));
+const navLinks = Array.from(document.querySelectorAll('.nav-link'));
 const burger = document.getElementById('burger');
 const mobileNav = document.getElementById('mobileNav');
+const canvas = document.getElementById('scrollCanvas');
+const ctx = canvas.getContext('2d');
 
-function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;drawFrame()}
-window.addEventListener('resize',resizeCanvas);resizeCanvas();
+/* ── State ── */
+let targetFrame = 0, currentFrame = 0, isReady = false;
+const frames = new Array(TOTAL_FRAMES);
 
-function framePath(i){return `${isMobile?'frames-mobile':'frames-webp'}/frame_${String(i).padStart(6,'0')}.webp`}
+/* ── Canvas sizing ── */
+function resize(){
+  const dpr = Math.min(devicePixelRatio || 1, isMobile ? 1.5 : 2);
+  canvas.width = innerWidth * dpr;
+  canvas.height = innerHeight * dpr;
+  canvas.style.width = innerWidth + 'px';
+  canvas.style.height = innerHeight + 'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  drawFrame(Math.round(currentFrame));
+}
+addEventListener('resize', resize);
 
-function preloadFrames(){
-  let idx=0,active=0;
-  const fallback=setTimeout(()=>{if(loadedCount===0||failCount>=CONCURRENCY)finishLoading()},3000);
-  function next(){while(active<CONCURRENCY&&idx<TOTAL_FRAMES){const i=idx++;active++;const img=new Image();img.onload=()=>{images[i]=img;active--;loadedCount++;progress();next()};img.onerror=()=>{active--;failCount++;loadedCount++;progress();next()};img.src=framePath(i+1)}}
-  function progress(){const p=Math.round((loadedCount/TOTAL_FRAMES)*100);loaderFill.style.width=p+'%';loaderPct.textContent=p+'%';if(loadedCount>=TOTAL_FRAMES){clearTimeout(fallback);finishLoading()}}
-  next();
+/* ── Frame loader ── */
+function padNum(n){return String(n).padStart(6,'0')}
+
+function loadFrame(index){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>{
+      if(img.decode) img.decode().then(()=>{frames[index]=img;resolve()}).catch(()=>{frames[index]=img;resolve()});
+      else {frames[index]=img;resolve()}
+    };
+    img.onerror = ()=>resolve();
+    img.src = `${FRAME_DIR}/frame_${padNum(index+1)}.webp`;
+  });
 }
 
-function finishLoading(){loader.classList.add('hidden');pages[0].classList.add('active');revealElements(0);drawFrame()}
-
-function drawFrame(){
-  const idx=Math.min(Math.max(Math.round(currentFrame),0),TOTAL_FRAMES-1);
-  const img=images[idx];if(!img)return;
-  const cw=canvas.width,ch=canvas.height,scale=Math.max(cw/img.naturalWidth,ch/img.naturalHeight);
-  const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;
-  ctx.clearRect(0,0,cw,ch);ctx.drawImage(img,(cw-dw)/2,(ch-dh)/2,dw,dh);
+async function loadAllFrames(){
+  let loaded = 0;
+  const queue = Array.from({length:TOTAL_FRAMES},(_,i)=>i);
+  async function worker(){
+    while(queue.length>0){
+      const idx=queue.shift();
+      if(idx===undefined)return;
+      await loadFrame(idx);
+      loaded++;
+      const pct=Math.floor((loaded/TOTAL_FRAMES)*100);
+      loaderFill.style.width=pct+'%';
+      loaderPct.textContent=pct+'%';
+    }
+  }
+  await Promise.all(Array.from({length:CONCURRENCY},()=>worker()));
 }
 
-const MAX_SCROLL=(PAGE_COUNT-1)*1000;
-let snapTimer=null;
-function scheduleSnap(){
-  clearTimeout(snapTimer);
-  snapTimer=setTimeout(()=>{
-    const nearest=Math.round(targetScroll/1000)*1000;
-    targetScroll=Math.max(0,Math.min(nearest,MAX_SCROLL));
-  },300);
+/* ── Draw frame (cover fit) ── */
+function drawFrame(idx){
+  idx=Math.max(0,Math.min(TOTAL_FRAMES-1,idx));
+  const img=frames[idx]; if(!img) return;
+  const cw=innerWidth,ch=innerHeight;
+  const iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height;
+  const scale=Math.max(cw/iw,ch/ih);
+  const sw=iw*scale,sh=ih*scale;
+  ctx.clearRect(0,0,cw,ch);
+  ctx.drawImage(img,(cw-sw)/2,(ch-sh)/2,sw,sh);
 }
-window.addEventListener('wheel',e=>{
-  const slider=document.getElementById('poemsSlider');
-  const gallery=document.getElementById('videoGallery');
-  if(slider&&slider.matches(':hover'))return;
-  if(gallery&&gallery.matches(':hover'))return;
+
+/* ── NATIVE SCROLL → frame mapping ── */
+addEventListener('scroll',()=>{
+  if(!isReady) return;
+  const maxScroll=document.documentElement.scrollHeight-innerHeight;
+  const progress=maxScroll>0?scrollY/maxScroll:0;
+  targetFrame=progress*(TOTAL_FRAMES-1);
+},{passive:true});
+
+function scrollToPage(i){
+  const p=pages[i];
+  if(p) scrollTo({top:p.offsetTop,behavior:'smooth'});
+}
+
+/* ── Navigation ── */
+navLinks.forEach(l=>l.addEventListener('click',e=>{
   e.preventDefault();
-  targetScroll=Math.max(0,Math.min(targetScroll+e.deltaY*1.5,MAX_SCROLL));
-  scheduleSnap();
-},{passive:false});
-
-/* Mobile: track Y through touchmove, snap page on touchend */
-let tStartY=0,tStartX=0,tLastY=0,tSwiped=false;
-window.addEventListener('touchstart',e=>{
-  tStartY=e.touches[0].clientY;tLastY=tStartY;
-  tStartX=e.touches[0].clientX;tSwiped=false;
-},{passive:true});
-window.addEventListener('touchmove',e=>{
-  tLastY=e.touches[0].clientY;
-},{passive:true});
-window.addEventListener('touchend',()=>{
-  if(tSwiped)return;
-  const dy=tStartY-tLastY;
-  const dx=Math.abs(tLastY-tStartY)===0?0:Math.abs((tLastY-tStartY));
-  const dxReal=Math.abs(tStartX-tStartX); /* rough check */
-  if(Math.abs(dy)<15)return; /* too small */
-  tSwiped=true;
-  const curPage=Math.round(targetScroll/1000);
-  if(dy>0&&curPage<PAGE_COUNT-1)targetScroll=(curPage+1)*1000;
-  else if(dy<0&&curPage>0)targetScroll=(curPage-1)*1000;
-},{passive:true});
-
-function animate(){
-  scrollPos+=(targetScroll-scrollPos)*LERP;
-  currentFrame=(scrollPos/MAX_SCROLL)*(TOTAL_FRAMES-1);drawFrame();
-  const pageIdx=Math.round(scrollPos/1000);
-  pages.forEach((p,i)=>{if(i===pageIdx){p.classList.add('active');revealElements(i)}else p.classList.remove('active')});
-  navLinks.forEach(l=>l.classList.toggle('active',parseInt(l.dataset.section)===pageIdx));
-  requestAnimationFrame(animate);
-}
-
-const revealed=new Set();
-function revealElements(idx){if(revealed.has(idx))return;revealed.add(idx);pages[idx].querySelectorAll('.reveal').forEach((el,i)=>setTimeout(()=>el.classList.add('visible'),i*100))}
-
-navLinks.forEach(l=>l.addEventListener('click',e=>{e.preventDefault();targetScroll=parseInt(l.dataset.section)*1000;mobileNav.classList.remove('open');burger.classList.remove('open')}));
-document.querySelectorAll('[data-section]').forEach(el=>{if(el.classList.contains('nav-link'))return;el.addEventListener('click',e=>{e.preventDefault();targetScroll=parseInt(el.dataset.section)*1000})});
+  scrollToPage(parseInt(l.dataset.section));
+  mobileNav.classList.remove('open');
+  burger.classList.remove('open');
+}));
+document.querySelectorAll('[data-section]').forEach(el=>{
+  if(el.classList.contains('nav-link'))return;
+  el.addEventListener('click',e=>{e.preventDefault();scrollToPage(parseInt(el.dataset.section))});
+});
 burger.addEventListener('click',()=>{burger.classList.toggle('open');mobileNav.classList.toggle('open')});
 
-window.addEventListener('keydown',e=>{
-  if(e.key==='ArrowDown'||e.key===' '){e.preventDefault();targetScroll=Math.min(targetScroll+1000,MAX_SCROLL)}
-  if(e.key==='ArrowUp'){e.preventDefault();targetScroll=Math.max(targetScroll-1000,0)}
+addEventListener('keydown',e=>{
+  const cur=pages.findIndex(p=>p.classList.contains('is-active'));
+  if(e.key==='ArrowDown'||e.key===' '){e.preventDefault();if(cur<pages.length-1)scrollToPage(cur+1)}
+  if(e.key==='ArrowUp'){e.preventDefault();if(cur>0)scrollToPage(cur-1)}
 });
 
-preloadFrames();requestAnimationFrame(animate);
+/* ── IntersectionObserver for active page ── */
+let lastIdx=-1;
+const observer=new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      const idx=pages.indexOf(entry.target);
+      if(idx!==-1 && idx!==lastIdx){
+        lastIdx=idx;
+        pages.forEach((p,i)=>p.classList.toggle('is-active',i===idx));
+        navLinks.forEach(l=>l.classList.toggle('active',parseInt(l.dataset.section)===idx));
+      }
+    }
+  });
+},{root:null,rootMargin:'-40% 0px -40% 0px'});
+pages.forEach(p=>observer.observe(p));
+
+/* ── Render loop ── */
+function animate(){
+  requestAnimationFrame(animate);
+  currentFrame+=(targetFrame-currentFrame)*LERP;
+  if(isReady) drawFrame(Math.round(currentFrame));
+}
+animate();
+
+/* ── Init ── */
+(async function init(){
+  resize();
+  await loadAllFrames();
+  isReady=true;
+  drawFrame(0);
+  setTimeout(()=>{
+    loader.classList.add('hidden');
+    pages[0].classList.add('is-active');
+  },400);
+})();
 
 /* ============ MUSIC PLAYER ============ */
 const tracks=[
@@ -126,6 +169,7 @@ audio.addEventListener('ended',()=>{loadTrack((curTrack+1)%tracks.length);audio.
 progressWrap.addEventListener('click',e=>{if(audio.duration){audio.currentTime=(e.offsetX/progressWrap.offsetWidth)*audio.duration}});
 trackEls.forEach(t=>t.addEventListener('click',()=>{loadTrack(parseInt(t.dataset.idx));audio.play();playBtn.textContent='⏸'}));
 
+/* ============ VIDEO GALLERY ============ */
 const videoData=[
   {src:'https://www.dropbox.com/scl/fi/dx6ica0q180pyle2f4a2a/WhatsApp-Video-2026-05-06-at-18.09.41.mp4?rlkey=hx7m3c2kzrwxgs0uu05tk11jt&raw=1',title:'Стихотворение 1'},
   {src:'https://www.dropbox.com/scl/fi/ep4mdx9arpc9sl4d56xhp/WhatsApp-Video-2026-05-06-at-18.09.44.mp4?rlkey=79j7r9sngqmydzi963mquibnu&raw=1',title:'Стихотворение 2'},
@@ -147,7 +191,6 @@ const videoData=[
 ];
 const gallery=document.getElementById('videoGallery');
 
-/* build modal */
 const modal=document.createElement('div');modal.className='video-modal';modal.innerHTML='<button class="vm-close">✕</button><video class="vm-video" controls playsinline></video>';
 document.body.appendChild(modal);
 const vmVideo=modal.querySelector('.vm-video');
@@ -156,7 +199,6 @@ modal.addEventListener('click',e=>{if(e.target===modal){modal.classList.remove('
 
 videoData.forEach((v,i)=>{
   const thumb=document.createElement('div');thumb.className='video-thumb';
-  /* use actual video element as preview so each shows its own first frame */
   const vid=document.createElement('video');
   vid.src=v.src;vid.preload='metadata';vid.muted=true;vid.playsInline=true;
   vid.addEventListener('loadeddata',()=>{vid.currentTime=0.5});
