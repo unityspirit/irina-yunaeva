@@ -70,7 +70,7 @@ body{font-family:var(--font-b);color:#fff;background:#0a0a0f;overflow-x:hidden;-
 .poems-slider::-webkit-scrollbar{height:4px}
 .poems-slider::-webkit-scrollbar-thumb{background:rgba(183,148,214,.3);border-radius:2px}
 .poem-card{min-width:260px;max-width:300px;flex-shrink:0;scroll-snap-align:start;border-color:rgba(183,148,214,0.25);display:flex;flex-direction:column;justify-content:space-between;padding:12px}
-.poem-text{font-family:var(--font-h);font-size:clamp(13px,1.4vw,15px);color:#fff;line-height:1.4;font-style:italic;text-shadow:var(--ts)}
+.poem-text{font-family:var(--font-h);font-size:clamp(13px,1.4vw,15px);color:#ffffff;line-height:1.4;font-style:italic;text-shadow:var(--ts)}
 .poem-author{display:block;margin-top:6px;font-size:12px;color:var(--lilac);font-style:italic;text-align:right;text-shadow:var(--ts);font-family:var(--font-h)}
 /* MUSIC */
 .music-player{max-width:480px;margin:0 auto;border-color:rgba(183,148,214,.35)}
