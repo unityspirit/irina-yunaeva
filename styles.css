@@ -13,7 +13,7 @@ body{font-family:var(--font-b);color:#fff;background:#0a0a0f;overflow-x:hidden;-
 #loader{position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;align-items:center;justify-content:center;transition:opacity .5s,visibility .5s}
 #loader.hidden{opacity:0;visibility:hidden;pointer-events:none}
 .loader-content{text-align:center}
-.loader-logo-img{width:64px;height:64px;object-fit:contain;border-radius:12px;margin-bottom:12px}
+.loader-logo-img{width:192px;height:192px;object-fit:contain;border-radius:12px;margin-bottom:12px}
 .loader-name{font-family:var(--font-h);font-size:clamp(24px,5vw,40px);color:#fff;letter-spacing:4px;text-shadow:var(--ts);font-weight:500;font-style:italic;margin-bottom:16px}
 .loader-bar{width:200px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin:0 auto 10px}
 .loader-fill{height:100%;width:0;background:linear-gradient(90deg,var(--lilac),var(--gold));transition:width .15s}
@@ -63,6 +63,9 @@ body{font-family:var(--font-b);color:#fff;background:#0a0a0f;overflow-x:hidden;-
 .btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(183,148,214,.5)}
 /* POEMS */
 .poems-page{overflow:visible}
+.poems-section{margin-bottom:48px}
+.poems-section:last-child{margin-bottom:0}
+.poems-section-title{font-family:var(--font-h);font-size:clamp(20px,3.5vw,26px);color:var(--lilac);margin-bottom:14px;font-style:italic;text-shadow:var(--ts);border-bottom:1px solid rgba(183,148,214,0.15);padding-bottom:6px;display:inline-block;letter-spacing:1px}
 .poems-slider{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:4px 0 12px;scrollbar-width:thin;scrollbar-color:rgba(183,148,214,.3) transparent}
 .poems-slider::-webkit-scrollbar{height:4px}
 .poems-slider::-webkit-scrollbar-thumb{background:rgba(183,148,214,.3);border-radius:2px}
@@ -142,4 +145,6 @@ body{font-family:var(--font-b);color:#fff;background:#0a0a0f;overflow-x:hidden;-
   .footer-sub{font-size:14px!important}
   .hero-divider{margin-bottom:10px}
   .card{padding:16px}
+  .poems-section{margin-bottom:36px}
+  .poems-section-title{margin-bottom:10px}
 }
