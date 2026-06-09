@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // 1. Fetch data.json publicly (no token needed for public repo)
       const res = await fetch('data.json?t=' + Date.now());
-      if (!res.ok) throw new Error('Не удалось загрузить данные сайта');
+      if (!res.ok) throw new Error('Не удалось загрузить данные сайта (HTTP ' + res.status + ')');
       const data = await res.json();
 
       // 2. Validate password
@@ -95,17 +95,31 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!data.encrypted_token) {
         throw new Error('Зашифрованный токен не найден в данных сайта');
       }
-      const { iv, ct } = data.encrypted_token;
-      const key = await deriveKey(password);
-      const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: new Uint8Array(iv) },
-        key,
-        new Uint8Array(ct)
-      );
-      ghToken = new TextDecoder().decode(decrypted);
+
+      let decryptedToken;
+      try {
+        const { iv, ct } = data.encrypted_token;
+        const key = await deriveKey(password);
+        const decrypted = await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: new Uint8Array(iv) },
+          key,
+          new Uint8Array(ct)
+        );
+        decryptedToken = new TextDecoder().decode(decrypted);
+      } catch (cryptoErr) {
+        console.error('Crypto decrypt error:', cryptoErr);
+        throw new Error('Ошибка расшифровки токена. Попробуйте ещё раз.');
+      }
+      ghToken = decryptedToken;
 
       // 4. Now fetch via GitHub API to get sha for updates
-      const ghResult = await ghGetFile('data.json');
+      let ghResult;
+      try {
+        ghResult = await ghGetFile('data.json');
+      } catch (ghErr) {
+        console.error('GitHub API error:', ghErr);
+        throw new Error('Ошибка GitHub API: ' + (ghErr.message || 'Нет доступа'));
+      }
       siteData = JSON.parse(ghResult.content);
       fileSha = ghResult.sha;
 
@@ -117,7 +131,9 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAllTabs();
       showToast('Добро пожаловать!', 'success');
     } catch (err) {
-      errEl.textContent = err.message || 'Ошибка входа';
+      console.error('Login error:', err);
+      const msg = err.message || String(err) || 'Неизвестная ошибка';
+      errEl.textContent = msg;
       errEl.classList.add('visible');
       ghToken = null;
     } finally {
