@@ -23,6 +23,11 @@ const ctx = canvas.getContext('2d');
 let targetFrame = 0, currentFrame = 0, isReady = false;
 const frames = new Array(TOTAL_FRAMES);
 
+/* ── Site data (loaded from data.json) ── */
+let siteData = null;
+let activeTracks = [];    /* filtered visible tracks for player */
+let curTrack = 0;
+
 /* ── Canvas sizing ── */
 function resize(){
   const dpr = Math.min(devicePixelRatio || 1, isMobile ? 1.5 : 2);
@@ -135,10 +140,263 @@ function animate(){
 }
 animate();
 
+/* ============================================================
+   DYNAMIC CONTENT — load from data.json
+   ============================================================ */
+
+async function loadSiteData(){
+  try{
+    const r = await fetch('data.json?t='+Date.now());
+    siteData = await r.json();
+  }catch(e){
+    console.error('Failed to load data.json',e);
+    return;
+  }
+  renderHero(siteData.hero);
+  renderPoems(siteData.poemSections);
+  renderVideos(siteData.videos);
+  renderTracks(siteData.tracks);
+  renderAbout(siteData.about);
+}
+
+/* ── HERO ── */
+function renderHero(h){
+  if(!h) return;
+  const el = id => document.getElementById(id);
+  if(el('heroName1')) el('heroName1').innerHTML = h.name1;
+  if(el('heroName2')) el('heroName2').innerHTML = h.name2;
+  if(el('heroMotto')) el('heroMotto').innerHTML = h.motto;
+  if(el('heroGreeting')) el('heroGreeting').innerHTML = h.greeting;
+  if(el('heroButton')) el('heroButton').innerHTML = h.buttonText;
+}
+
+/* ── POEMS ── */
+function renderPoems(sections){
+  const container = document.getElementById('poemsContainer');
+  if(!container || !sections) return;
+  container.innerHTML = '';
+
+  sections.filter(s=>s.visible).forEach(sec=>{
+    const wrap = document.createElement('div');
+    wrap.className = 'poems-section';
+
+    const title = document.createElement('h3');
+    title.className = 'poems-section-title';
+    title.textContent = sec.title;
+    wrap.appendChild(title);
+
+    const slider = document.createElement('div');
+    slider.className = 'poems-slider';
+
+    sec.poems.filter(p=>p.visible).forEach(poem=>{
+      const card = document.createElement('div');
+      card.className = 'poem-card card reveal';
+      card.innerHTML = `<p class="poem-text">${poem.text}</p><span class="poem-author">${poem.author}</span>`;
+      slider.appendChild(card);
+    });
+
+    wrap.appendChild(slider);
+    container.appendChild(wrap);
+  });
+}
+
+/* ── VIDEOS ── */
+function parseYouTubeUrl(url){
+  if(!url) return null;
+  let m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if(m) return { id:m[1], embed:'https://www.youtube.com/embed/'+m[1], thumb:'https://img.youtube.com/vi/'+m[1]+'/hqdefault.jpg' };
+  return null;
+}
+
+function renderVideos(videos){
+  const gallery = document.getElementById('videoGallery');
+  if(!gallery || !videos) return;
+  gallery.innerHTML = '';
+
+  /* video modal */
+  let modal = document.querySelector('.video-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.className = 'video-modal';
+    modal.innerHTML = '<button class="vm-close">✕</button><video class="vm-video" controls playsinline></video><div class="vm-iframe-wrap" style="display:none"><iframe class="vm-iframe" allowfullscreen allow="autoplay"></iframe></div>';
+    document.body.appendChild(modal);
+    const vmVideo = modal.querySelector('.vm-video');
+    const vmIframe = modal.querySelector('.vm-iframe');
+    const vmIframeWrap = modal.querySelector('.vm-iframe-wrap');
+    modal.querySelector('.vm-close').addEventListener('click',()=>{modal.classList.remove('open');vmVideo.pause();vmVideo.src='';vmIframe.src='';vmIframeWrap.style.display='none';vmVideo.style.display=''});
+    modal.addEventListener('click',e=>{if(e.target===modal){modal.classList.remove('open');vmVideo.pause();vmVideo.src='';vmIframe.src='';vmIframeWrap.style.display='none';vmVideo.style.display=''}});
+  }
+  const vmVideo = modal.querySelector('.vm-video');
+  const vmIframe = modal.querySelector('.vm-iframe');
+  const vmIframeWrap = modal.querySelector('.vm-iframe-wrap');
+
+  videos.filter(v=>v.visible).forEach(v=>{
+    const yt = parseYouTubeUrl(v.src);
+    const orient = v.orientation || 'portrait';
+    const thumb = document.createElement('div');
+    thumb.className = 'video-thumb video-thumb--' + orient;
+
+    if(yt){
+      /* YouTube thumbnail */
+      const img = document.createElement('img');
+      img.src = yt.thumb;
+      img.alt = v.title;
+      img.loading = 'lazy';
+      thumb.appendChild(img);
+    } else {
+      /* Regular video file */
+      const vid = document.createElement('video');
+      vid.src = v.src;
+      vid.preload = 'metadata';
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.addEventListener('loadedmetadata',()=>{
+        vid.currentTime = 0.5;
+        /* auto-detect orientation if not specified */
+        if(!v.orientation && vid.videoWidth && vid.videoHeight){
+          const detectedOrient = vid.videoWidth > vid.videoHeight ? 'landscape' : 'portrait';
+          thumb.className = 'video-thumb video-thumb--' + detectedOrient;
+        }
+      });
+      thumb.appendChild(vid);
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'vt-play';
+    overlay.textContent = '▷';
+    thumb.appendChild(overlay);
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'vt-title';
+    titleEl.textContent = v.title;
+    thumb.appendChild(titleEl);
+
+    thumb.addEventListener('click',()=>{
+      if(yt){
+        vmVideo.style.display = 'none';
+        vmIframeWrap.style.display = '';
+        vmIframe.src = yt.embed + '?autoplay=1';
+      } else {
+        vmIframeWrap.style.display = 'none';
+        vmVideo.style.display = '';
+        vmVideo.src = v.src;
+        vmVideo.play();
+      }
+      modal.classList.add('open');
+    });
+
+    gallery.appendChild(thumb);
+  });
+}
+
+/* ── MUSIC PLAYER ── */
+function renderTracks(tracks){
+  if(!tracks) return;
+  activeTracks = tracks.filter(t=>t.visible);
+  curTrack = 0;
+
+  const audio = document.getElementById('audioEl');
+  const playBtn = document.getElementById('playBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressBar = document.getElementById('progressBar');
+  const curTimeEl = document.getElementById('curTime');
+  const durTimeEl = document.getElementById('durTime');
+  const npTitle = document.getElementById('npTitle');
+  const playlist = document.getElementById('playlist');
+
+  if(!audio || !playlist) return;
+
+  /* render playlist items */
+  playlist.innerHTML = '';
+  activeTracks.forEach((t,i)=>{
+    const el = document.createElement('div');
+    el.className = 'track' + (i===0?' active':'');
+    el.dataset.idx = i;
+    el.innerHTML = `<span class="t-num">${String(i+1).padStart(2,'0')}</span><span class="t-name">${t.name}</span>`;
+    el.addEventListener('click',()=>{loadTrack(i);audio.play();playBtn.textContent='⏸'});
+    playlist.appendChild(el);
+  });
+
+  function loadTrack(i){
+    curTrack = i;
+    audio.src = activeTracks[i].src;
+    npTitle.textContent = activeTracks[i].name;
+    playlist.querySelectorAll('.track').forEach((t,j)=>t.classList.toggle('active',j===i));
+  }
+
+  function fmt(s){
+    if(!s||isNaN(s))return'0:00';
+    const m=Math.floor(s/60),sec=Math.floor(s%60);
+    return m+':'+(sec<10?'0':'')+sec;
+  }
+
+  /* set initial title */
+  if(activeTracks.length > 0){
+    npTitle.textContent = activeTracks[0].name;
+  }
+
+  playBtn.addEventListener('click',()=>{
+    if(audio.paused){
+      if(!audio.src && activeTracks.length>0) loadTrack(0);
+      audio.play();
+      playBtn.textContent='⏸';
+    }else{
+      audio.pause();
+      playBtn.textContent='▶';
+    }
+  });
+  prevBtn.addEventListener('click',()=>{
+    if(activeTracks.length===0)return;
+    loadTrack((curTrack-1+activeTracks.length)%activeTracks.length);
+    audio.play();playBtn.textContent='⏸';
+  });
+  nextBtn.addEventListener('click',()=>{
+    if(activeTracks.length===0)return;
+    loadTrack((curTrack+1)%activeTracks.length);
+    audio.play();playBtn.textContent='⏸';
+  });
+  audio.addEventListener('timeupdate',()=>{
+    if(audio.duration){
+      progressBar.style.width=(audio.currentTime/audio.duration*100)+'%';
+      curTimeEl.textContent=fmt(audio.currentTime);
+      durTimeEl.textContent=fmt(audio.duration);
+    }
+  });
+  audio.addEventListener('ended',()=>{
+    if(activeTracks.length===0)return;
+    loadTrack((curTrack+1)%activeTracks.length);
+    audio.play();
+  });
+  progressWrap.addEventListener('click',e=>{
+    if(audio.duration){audio.currentTime=(e.offsetX/progressWrap.offsetWidth)*audio.duration}
+  });
+}
+
+/* ── ABOUT ── */
+function renderAbout(about){
+  if(!about) return;
+  const el = id => document.getElementById(id);
+  if(el('aboutLead')) el('aboutLead').innerHTML = about.lead;
+  const pWrap = el('aboutParagraphs');
+  if(pWrap && about.paragraphs){
+    pWrap.innerHTML = '';
+    about.paragraphs.forEach(text=>{
+      const p = document.createElement('p');
+      p.innerHTML = text;
+      pWrap.appendChild(p);
+    });
+  }
+  if(el('footerText')) el('footerText').innerHTML = about.footer;
+  if(el('footerSub')) el('footerSub').innerHTML = about.footerSub;
+}
+
 /* ── Init ── */
 (async function init(){
   resize();
   await loadAllFrames();
+  await loadSiteData();
   isReady=true;
   drawFrame(0);
   setTimeout(()=>{
@@ -146,65 +404,3 @@ animate();
     pages[0].classList.add('is-active');
   },400);
 })();
-
-/* ============ MUSIC PLAYER ============ */
-const tracks=[
-  {name:'Песня 1',src:'https://www.dropbox.com/scl/fi/5eanbtn3v2z5hvsq3gd3w/1.mpeg?rlkey=pqew3kqu958gracorquuwov8y&raw=1'},
-  {name:'Песня 2',src:'https://www.dropbox.com/scl/fi/y006ktwhvrjfkpjtbxp8t/2.mpeg?rlkey=8g7ymze0fe5h91s5yp01ih6se&raw=1'},
-  {name:'Песня 3',src:'https://www.dropbox.com/scl/fi/of8nskekxbovj29xe6cme/3.mpeg?rlkey=3eiz7tp97lgzv1nzflgg5fx89&raw=1'}
-];
-let curTrack=0;
-const audio=document.getElementById('audioEl'),playBtn=document.getElementById('playBtn'),prevBtn=document.getElementById('prevBtn'),nextBtn=document.getElementById('nextBtn');
-const progressWrap=document.getElementById('progressWrap'),progressBar=document.getElementById('progressBar');
-const curTimeEl=document.getElementById('curTime'),durTimeEl=document.getElementById('durTime'),npTitle=document.getElementById('npTitle');
-const trackEls=document.querySelectorAll('.track');
-
-function loadTrack(i){curTrack=i;audio.src=tracks[i].src;npTitle.textContent=tracks[i].name;trackEls.forEach((t,j)=>t.classList.toggle('active',j===i))}
-function fmt(s){if(!s||isNaN(s))return'0:00';const m=Math.floor(s/60),sec=Math.floor(s%60);return m+':'+(sec<10?'0':'')+sec}
-playBtn.addEventListener('click',()=>{if(audio.paused){if(!audio.src)loadTrack(0);audio.play();playBtn.textContent='⏸'}else{audio.pause();playBtn.textContent='▶'}});
-prevBtn.addEventListener('click',()=>{loadTrack((curTrack-1+tracks.length)%tracks.length);audio.play();playBtn.textContent='⏸'});
-nextBtn.addEventListener('click',()=>{loadTrack((curTrack+1)%tracks.length);audio.play();playBtn.textContent='⏸'});
-audio.addEventListener('timeupdate',()=>{if(audio.duration){progressBar.style.width=(audio.currentTime/audio.duration*100)+'%';curTimeEl.textContent=fmt(audio.currentTime);durTimeEl.textContent=fmt(audio.duration)}});
-audio.addEventListener('ended',()=>{loadTrack((curTrack+1)%tracks.length);audio.play()});
-progressWrap.addEventListener('click',e=>{if(audio.duration){audio.currentTime=(e.offsetX/progressWrap.offsetWidth)*audio.duration}});
-trackEls.forEach(t=>t.addEventListener('click',()=>{loadTrack(parseInt(t.dataset.idx));audio.play();playBtn.textContent='⏸'}));
-
-/* ============ VIDEO GALLERY ============ */
-const videoData=[
-  {src:'https://www.dropbox.com/scl/fi/dx6ica0q180pyle2f4a2a/WhatsApp-Video-2026-05-06-at-18.09.41.mp4?rlkey=hx7m3c2kzrwxgs0uu05tk11jt&raw=1',title:'Стихотворение 1'},
-  {src:'https://www.dropbox.com/scl/fi/ep4mdx9arpc9sl4d56xhp/WhatsApp-Video-2026-05-06-at-18.09.44.mp4?rlkey=79j7r9sngqmydzi963mquibnu&raw=1',title:'Стихотворение 2'},
-  {src:'https://www.dropbox.com/scl/fi/bwfd0sjy4nbwvkc7o5cx7/WhatsApp-Video-2026-05-06-at-18.09.46.mp4?rlkey=enzq6y5hy6k8ypqtl871h4vjb&raw=1',title:'Стихотворение 3'},
-  {src:'https://www.dropbox.com/scl/fi/9ppl9tn6e01355fsmynrh/WhatsApp-Video-2026-05-06-at-18.09.49.mp4?rlkey=3ubp20dr9w18zdrqyrdiv838m&raw=1',title:'Стихотворение 4'},
-  {src:'https://www.dropbox.com/scl/fi/e28dtcw053me55zdpwoe7/WhatsApp-Video-2026-05-06-at-18.09.51.mp4?rlkey=dflw4rukgz86gia28l7iyb6c2&raw=1',title:'Стихотворение 5'},
-  {src:'https://www.dropbox.com/scl/fi/ni4a42sxakpyvddyi9v9b/WhatsApp-Video-2026-05-06-at-18.10.43.mp4?rlkey=ky8w7cu3jsq5sp8nrgt08io5x&raw=1',title:'Стихотворение 6'},
-  {src:'https://www.dropbox.com/scl/fi/m47naxlejxtfpuug068h8/WhatsApp-Video-2026-05-06-at-18.10.44.mp4?rlkey=j1w4wrr385pj82z13uprg9oa0&raw=1',title:'Стихотворение 7'},
-  {src:'https://www.dropbox.com/scl/fi/wt45jhjne5a2sn8okmk14/WhatsApp-Video-2026-05-06-at-18.10.46.mp4?rlkey=rdsprd5895pdcf508tmfzrhkn&raw=1',title:'Стихотворение 8'},
-  {src:'https://www.dropbox.com/scl/fi/nkat07xi1tngsopmgiei4/WhatsApp-Video-2026-05-06-at-18.10.49.mp4?rlkey=q7ayoc6cl0figmzg8mabd33cp&raw=1',title:'Стихотворение 9'},
-  {src:'https://www.dropbox.com/scl/fi/06reaybsilvh3u7lbpp84/WhatsApp-Video-2026-05-06-at-18.10.50.mp4?rlkey=8gz5ft0xiv40ydbjn2bh5tp7j&raw=1',title:'Стихотворение 10'},
-  {src:'https://www.dropbox.com/scl/fi/y2dr02j1623ngwuw9seqy/WhatsApp-Video-2026-05-06-at-18.10.54.mp4?rlkey=3dmnc7801qxnchel4k6qrsbsx&raw=1',title:'Стихотворение 11'},
-  {src:'https://www.dropbox.com/scl/fi/p7vmtv1pad9w65kw6d875/WhatsApp-Video-2026-05-06-at-18.10.57.mp4?rlkey=t4vv897t89xbjbu022xscqw1y&raw=1',title:'Стихотворение 12'},
-  {src:'https://www.dropbox.com/scl/fi/qs8a5akck1j966rasbjv2/WhatsApp-Video-2026-05-06-at-18.10.59.mp4?rlkey=n3ns7cdx5340q26htqbffjedh&raw=1',title:'Стихотворение 13'},
-  {src:'https://www.dropbox.com/scl/fi/f1ii8lj16sa2smpq8wgq6/WhatsApp-Video-2026-05-06-at-18.11.02.mp4?rlkey=mfxxpsdgkw08pl1udu85zbdud&raw=1',title:'Стихотворение 14'},
-  {src:'https://www.dropbox.com/scl/fi/cfcc06j3hg4t3ba9v0n4u/WhatsApp-Video-2026-05-06-at-18.11.04.mp4?rlkey=k4dgt5t2njsmn8z5bpp7onxkk&raw=1',title:'Стихотворение 15'},
-  {src:'https://www.dropbox.com/scl/fi/zr9zqk2dct9kuv9qeaic5/WhatsApp-Video-2026-05-06-at-18.11.07.mp4?rlkey=8pylqk4uzmiz2sfcw90y6ft2y&raw=1',title:'Стихотворение 16'},
-  {src:'https://www.dropbox.com/scl/fi/4mxet9hsax496193ov3s5/WhatsApp-Video-2026-05-06-at-18.10.06.mp4?rlkey=l5qaxtwmuixl0t8wjiqz650xv&raw=1',title:'Стихотворение 17'}
-];
-const gallery=document.getElementById('videoGallery');
-
-const modal=document.createElement('div');modal.className='video-modal';modal.innerHTML='<button class="vm-close">✕</button><video class="vm-video" controls playsinline></video>';
-document.body.appendChild(modal);
-const vmVideo=modal.querySelector('.vm-video');
-modal.querySelector('.vm-close').addEventListener('click',()=>{modal.classList.remove('open');vmVideo.pause();vmVideo.src=''});
-modal.addEventListener('click',e=>{if(e.target===modal){modal.classList.remove('open');vmVideo.pause();vmVideo.src=''}});
-
-videoData.forEach((v,i)=>{
-  const thumb=document.createElement('div');thumb.className='video-thumb';
-  const vid=document.createElement('video');
-  vid.src=v.src;vid.preload='metadata';vid.muted=true;vid.playsInline=true;
-  vid.addEventListener('loadeddata',()=>{vid.currentTime=0.5});
-  thumb.appendChild(vid);
-  const overlay=document.createElement('div');overlay.className='vt-play';overlay.textContent='▷';thumb.appendChild(overlay);
-  const title=document.createElement('div');title.className='vt-title';title.textContent=v.title;thumb.appendChild(title);
-  thumb.addEventListener('click',()=>{vmVideo.src=v.src;modal.classList.add('open');vmVideo.play()});
-  gallery.appendChild(thumb);
-});
