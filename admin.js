@@ -65,39 +65,25 @@ async function decryptToken(password) {
   }
 }
 
-function isFirstSetup() {
-  return !localStorage.getItem('iy_enc_token');
-}
-
 /* ══════════════════════════════════════════════════════════════
-   AUTH MODULE
+   AUTH MODULE — token is stored encrypted in data.json
    ══════════════════════════════════════════════════════════════ */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Show/hide token field
-  const tg = document.getElementById('tokenGroup');
-  if (isFirstSetup()) tg.classList.add('visible');
-
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('loginBtn');
     const errEl = document.getElementById('loginError');
     const password = document.getElementById('loginPassword').value;
-    const tokenVal = document.getElementById('loginToken').value.trim();
 
     btn.classList.add('loading');
     errEl.classList.remove('visible');
 
     try {
-      // 1. Fetch data.json to validate password hash
-      const tempToken = isFirstSetup() ? tokenVal : await decryptToken(password);
-      if (!tempToken) {
-        throw new Error('Не удалось расшифровать токен. Неверный пароль?');
-      }
-      ghToken = tempToken;
-
-      const { content, sha } = await ghGetFile('data.json');
-      const data = JSON.parse(content);
+      // 1. Fetch data.json publicly (no token needed for public repo)
+      const res = await fetch('data.json?t=' + Date.now());
+      if (!res.ok) throw new Error('Не удалось загрузить данные сайта');
+      const data = await res.json();
 
       // 2. Validate password
       const hash = await sha256(password);
@@ -105,15 +91,24 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error('Неверный пароль');
       }
 
-      // 3. If first setup, encrypt token
-      if (isFirstSetup()) {
-        if (!tokenVal) throw new Error('Введите GitHub токен');
-        await encryptToken(tokenVal, password);
+      // 3. Decrypt token from data.json's encrypted_token field
+      if (!data.encrypted_token) {
+        throw new Error('Зашифрованный токен не найден в данных сайта');
       }
+      const { iv, ct } = data.encrypted_token;
+      const key = await deriveKey(password);
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: new Uint8Array(iv) },
+        key,
+        new Uint8Array(ct)
+      );
+      ghToken = new TextDecoder().decode(decrypted);
 
-      // 4. Success — store data and enter dashboard
-      siteData = data;
-      fileSha = sha;
+      // 4. Now fetch via GitHub API to get sha for updates
+      const ghResult = await ghGetFile('data.json');
+      siteData = JSON.parse(ghResult.content);
+      fileSha = ghResult.sha;
+
       sessionStorage.setItem('iy_password', password);
 
       document.getElementById('loginScreen').style.display = 'none';
@@ -142,10 +137,7 @@ function logout() {
   document.getElementById('dashboard').classList.remove('visible');
   document.getElementById('loginScreen').style.display = '';
   document.getElementById('loginPassword').value = '';
-  document.getElementById('loginToken').value = '';
   document.getElementById('loginError').classList.remove('visible');
-  const tg = document.getElementById('tokenGroup');
-  if (isFirstSetup()) tg.classList.add('visible'); else tg.classList.remove('visible');
 }
 
 // Unsaved changes guard
@@ -932,8 +924,13 @@ async function changePassword() {
     const newHash = await sha256(newP);
     siteData.password_hash = newHash;
 
-    // Re-encrypt token with new password
-    await encryptToken(ghToken, newP);
+    // Re-encrypt token with new password and store in data.json
+    const key = await deriveKey(newP);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(ghToken);
+    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+    siteData.encrypted_token = { iv: Array.from(iv), ct: Array.from(new Uint8Array(ciphertext)) };
+
     sessionStorage.setItem('iy_password', newP);
     markDirty();
     showToast('Пароль изменён. Не забудьте сохранить!', 'success');
@@ -952,9 +949,17 @@ async function updateToken() {
   try {
     const password = sessionStorage.getItem('iy_password');
     if (!password) { showToast('Сессия истекла. Войдите заново.', 'error'); return; }
-    await encryptToken(newToken, password);
+
+    // Encrypt new token and store in data.json
+    const key = await deriveKey(password);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(newToken);
+    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+    siteData.encrypted_token = { iv: Array.from(iv), ct: Array.from(new Uint8Array(ciphertext)) };
+
     ghToken = newToken;
-    showToast('Токен обновлён', 'success');
+    markDirty();
+    showToast('Токен обновлён. Не забудьте сохранить!', 'success');
     document.getElementById('settNewToken').value = '';
   } catch (err) {
     showToast('Ошибка: ' + err.message, 'error');
