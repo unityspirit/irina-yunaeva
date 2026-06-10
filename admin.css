@@ -583,10 +583,12 @@ body {
 }
 
 .form-textarea {
-  resize: none;
-  overflow: hidden;
+  resize: vertical;
+  overflow-y: auto;
   min-height: 80px;
+  max-height: 300px;
   line-height: 1.65;
+  -webkit-overflow-scrolling: touch;
 }
 
 .form-hint {

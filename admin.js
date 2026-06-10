@@ -1213,7 +1213,15 @@ function updCC(id, input) {
 
 function autoResize(textarea) {
   textarea.style.height = 'auto';
-  textarea.style.height = textarea.scrollHeight + 'px';
+  const maxH = parseInt(getComputedStyle(textarea).maxHeight) || 300;
+  const scrollH = textarea.scrollHeight;
+  if (scrollH > maxH) {
+    textarea.style.height = maxH + 'px';
+    textarea.style.overflowY = 'auto';
+  } else {
+    textarea.style.height = scrollH + 'px';
+    textarea.style.overflowY = 'hidden';
+  }
 }
 
 function autoResizeAll(container) {
