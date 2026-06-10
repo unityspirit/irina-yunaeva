@@ -542,7 +542,7 @@
       "src": "assets/videos/1000122112.mp4",
       "title": "Проверка",
       "orientation": "portrait",
-      "visible": true
+      "visible": false
     }
   ],
   "tracks": [
@@ -558,7 +558,7 @@
       "type": "external",
       "name": "Песня 2",
       "src": "https://www.dropbox.com/scl/fi/y006ktwhvrjfkpjtbxp8t/2.mpeg?rlkey=8g7ymze0fe5h91s5yp01ih6se&raw=1",
-      "visible": false
+      "visible": true
     },
     {
       "id": "t3",
