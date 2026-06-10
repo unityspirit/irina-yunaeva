@@ -575,6 +575,9 @@ async function handleVideoFile(file) {
     return;
   }
 
+  // Read title IMMEDIATELY before any async operations
+  const title = document.getElementById('videoFileTitle').value.trim() || file.name;
+
   const progressBar = document.getElementById('videoProgress');
   const progressFill = document.getElementById('videoProgressFill');
   progressBar.classList.add('visible');
@@ -588,7 +591,6 @@ async function handleVideoFile(file) {
       progressFill.style.width = (30 + pct * 0.7) + '%';
     });
 
-    const title = document.getElementById('videoFileTitle').value.trim() || file.name;
     siteData.videos.push({
       id: generateId('v'),
       type: 'file',
@@ -739,6 +741,9 @@ async function handleTrackFile(file) {
     return;
   }
 
+  // Read name IMMEDIATELY before any async operations
+  const name = document.getElementById('trackFileName').value.trim() || file.name.replace(/\.[^/.]+$/, '');
+
   const progressBar = document.getElementById('trackProgress');
   const progressFill = document.getElementById('trackProgressFill');
   progressBar.classList.add('visible');
@@ -749,7 +754,6 @@ async function handleTrackFile(file) {
       progressFill.style.width = (10 + pct * 0.9) + '%';
     });
 
-    const name = document.getElementById('trackFileName').value.trim() || file.name.replace(/\.[^/.]+$/, '');
     siteData.tracks.push({
       id: generateId('t'),
       type: 'file',
