@@ -558,7 +558,7 @@
       "type": "external",
       "name": "Песня 2",
       "src": "https://www.dropbox.com/scl/fi/y006ktwhvrjfkpjtbxp8t/2.mpeg?rlkey=8g7ymze0fe5h91s5yp01ih6se&raw=1",
-      "visible": true
+      "visible": false
     },
     {
       "id": "t3",
